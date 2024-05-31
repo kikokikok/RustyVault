@@ -1,0 +1,1 @@
+package mainfunc main() {}
