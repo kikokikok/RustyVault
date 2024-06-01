@@ -5,7 +5,6 @@
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": true,
   "packages": {
-    "rtf-converter": {},
-    "rtf-converter-wasm": {}
+    "rusty-vault": {}
   }
 }
