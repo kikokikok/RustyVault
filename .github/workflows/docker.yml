@@ -46,7 +46,7 @@ jobs:
           cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/rusty-vault:latest,mode=max
           file: Dockerfile
           context: .
-          platforms: linux/amd64, linux/arm64, windows/arm64
+          platforms: linux/amd64, linux/arm64
           push: false
           tags: |
             ${{ github.repository_owner }}/rusty-vault:latest
