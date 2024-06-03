@@ -26,9 +26,8 @@ jobs:
       github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
 
     outputs:
-      releases_created: ${{ steps.release.outputs['rusty-vault--release_created'] || steps.release.outputs['rusty-vault-wasm--release_created'] }}
-      wasm_release_created: ${{ steps.release.outputs['rusty-vault-wasm--release_created'] }}
-      tag: ${{ steps.release.outputs['rusty-vault--tag_name'] }}
+      releases_created: ${{ steps.release.outputs['rusty_vault--release_created'] }}
+      tag: ${{ steps.release.outputs['rusty_vault--tag_name'] }}
 
     steps:
       - name: Run release-please
@@ -68,10 +67,6 @@ jobs:
             os: windows-latest
 
     steps:
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Checkout Repository
         uses: actions/checkout@v3
 
@@ -124,7 +119,7 @@ jobs:
 
       - name: Get Version Number
         shell: bash
-        run: echo "PROJECT_VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' rusty-vault/Cargo.toml | head -n1)" >> $GITHUB_ENV
+        run: echo "PROJECT_VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' RustyVault/Cargo.toml | head -n1)" >> $GITHUB_ENV
 
       # https://github.com/docker/setup-qemu-action
       - name: Setup QEMU
