@@ -31,7 +31,7 @@ RUN     apt-get update && \
         musl-tools \
         libssl-dev \
         &&  \
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh  && \
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -- -y && \
         cargo install cross &&\
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
