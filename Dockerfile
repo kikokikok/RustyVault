@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.4
 
 # Stage 1: Build the project
-FROM --platform=$BUILDPLATFORM docker:dind-rootless as builder
+FROM --platform=$BUILDPLATFORM cruizba/ubuntu-dind:latest as builder
 
 ARG TARGETPLATFORM
 ENV RUST_MUSL_CROSS_TARGET=$TARGETPLATFORM
