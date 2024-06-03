@@ -18,11 +18,11 @@ RUN /platform.sh && \
     echo $TARGETPLATFORM && \
     cat /.target
 
-RUN     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-RUN     cargo install cross && \
-        apt-get update && \
+
+RUN     apt-get update && \
         apt-get install -y \
         pkg-config \
+        curl \
         librust-alsa-sys-dev \
         musl-tools \
         build-essential \
@@ -31,7 +31,9 @@ RUN     cargo install cross && \
         musl-tools \
         libssl-dev \
         docker \
-        && \
+        &&  \
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh  && \
+        cargo install cross &&\
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN update-ca-certificates
