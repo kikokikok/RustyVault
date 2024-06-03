@@ -30,6 +30,7 @@ RUN     cargo install cross && \
         musl-dev \
         musl-tools \
         libssl-dev \
+        docker \
         && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
