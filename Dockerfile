@@ -50,7 +50,7 @@ RUN adduser \
 WORKDIR /app
 
 COPY ./ .
-RUN rustup target list
+RUN rustup target add aarch64-unknown-linux-musl
 RUN cargo build --bin $BINARY \
     --target $(cat /.target) \
     --release
