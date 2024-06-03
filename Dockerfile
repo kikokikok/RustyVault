@@ -17,9 +17,9 @@ RUN /platform.sh && \
     echo $TARGETPLATFORM && \
     cat /.target
 
-RUN rustup target add "$(cat /.target)" && \
-    apt-get update && \
-    apt-get install -y \
+RUN     rustup target add "$(cat /.target)"
+RUN     apt-get update && \
+        apt-get install -y \
         pkg-config \
         librust-alsa-sys-dev \
         musl-tools \
