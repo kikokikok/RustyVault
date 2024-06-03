@@ -42,7 +42,6 @@ jobs:
         with:
           build-args: |
             RUST_BUILD_IMG=rust:1.78-slim-bullseye
-          build-args: |
             user=rustyvault
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/rusty-vault:latest
           cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/rusty-vault:latest,mode=max
