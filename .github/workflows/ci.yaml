@@ -1,0 +1,68 @@
+name: ci
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - "preview/**"
+    paths-ignore:
+      # - .github
+      # - .scripts
+      # - .charts
+      - LICENSE
+      - README.md
+      - build.sh
+      - build.ps1
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  versioning:
+    uses: f2calv/gha-workflows/.github/workflows/gha-release-versioning.yml@v1
+    with:
+      tag-prefix: ''
+      tag-and-release: false
+
+  app:
+    uses: f2calv/gha-workflows/.github/workflows/app-build-rust.yml@v1
+    needs: versioning
+    with:
+      fullSemVer: ${{ needs.versioning.outputs.fullSemVer }}
+
+  image:
+    uses: f2calv/gha-workflows/.github/workflows/container-image-build.yml@v1
+    permissions:
+      packages: write #for pushing container image
+      contents: read #note: for private repos setting packages to write, will reset all other permissions to none (weird?)
+    needs: [versioning, app]
+    with:
+      registry: ghcr.io/${{ github.repository_owner }}
+      tag: ${{ needs.versioning.outputs.semVer }}
+      tag-major: ${{ needs.versioning.outputs.major }}
+      tag-minor: ${{ needs.versioning.outputs.minor }}
+      push-image: ${{ github.ref_name == github.event.repository.default_branch }}
+
+  chart:
+    uses: f2calv/gha-workflows/.github/workflows/helm-chart-package.yml@v1
+    permissions:
+      packages: write #for pushing helm artifact
+      contents: read #note: for private repos setting packages to write, will reset all other permissions to none (weird?)
+    needs: [versioning, app, image]
+    with:
+      registry: ghcr.io/${{ github.repository_owner }}
+      chart-repository-prefix: charts/
+      tag: ${{ needs.versioning.outputs.semVer }}
+      push-chart: ${{ github.ref_name == github.event.repository.default_branch }}
+      chart-testing-cli-command: install
+
+  release:
+    needs: [versioning, app, image, chart]
+    if: github.ref == 'refs/heads/main'
+    uses: f2calv/gha-workflows/.github/workflows/gha-release-versioning.yml@v1
+    permissions:
+      contents: write
+    with:
+      semVer: ${{ needs.versioning.outputs.semVer }}
+      tag-prefix: ''
+      move-major-tag: false
