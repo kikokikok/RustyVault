@@ -32,9 +32,9 @@ RUN     apt-get update && \
         libssl-dev \
         &&  \
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y && \
-        cargo install cross &&\
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
+        apt-get clean && rm -rf /var/lib/apt/lists/*
+ENV PATH="/root/.cargo/bin:${PATH}"
+RUN cargo install cross
 RUN update-ca-certificates
 
 ENV USER=$user
