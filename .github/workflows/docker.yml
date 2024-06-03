@@ -41,7 +41,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           build-args: |
-            RUST_BUILD_IMG=rust:1.78-slim-bullseye USER=rustyvault
+            RUST_BUILD_IMG=rust:1.78-slim-bullseye user=rustyvault
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/rusty-vault:latest
           cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/rusty-vault:latest,mode=max
           file: Dockerfile
