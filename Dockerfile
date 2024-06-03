@@ -5,6 +5,7 @@ FROM --platform=$BUILDPLATFORM rust:latest as builder
 
 ARG TARGETPLATFORM
 ENV RUST_MUSL_CROSS_TARGET=$TARGETPLATFORM
+ENV CROSS_CONTAINER_IN_CONTAINER=true
 ARG target
 ARG binary
 ARG user
@@ -17,8 +18,9 @@ RUN /platform.sh && \
     echo $TARGETPLATFORM && \
     cat /.target
 
-RUN     rustup target add "$(cat /.target)"
-RUN     apt-get update && \
+#RUN     rustup target add "$(cat /.target)"
+RUN     cargo install cross && \
+        apt-get update && \
         apt-get install -y \
         pkg-config \
         librust-alsa-sys-dev \
@@ -50,8 +52,8 @@ RUN adduser \
 WORKDIR /app
 
 COPY ./ .
-RUN rustup target add aarch64-unknown-linux-musl
-RUN cargo build --bin $BINARY \
+
+RUN cross build --bin $BINARY \
     --target $(cat /.target) \
     --release
 
