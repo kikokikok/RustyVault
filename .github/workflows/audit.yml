@@ -1,17 +1,27 @@
 name: 🛡 Audit-Check
-
 on:
+  push:
+    paths:
+      # Run if workflow changes
+      - '.github/workflows/audit.yml'
+      # Run on changed dependencies
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+      # Run if the configuration file changes
+      - '**/audit.toml'
+  # Rerun periodicly to pick up new advisories
   schedule:
     - cron: '0 0 * * *'
+  # Run manually
+  workflow_dispatch:
 
 jobs:
-  security-audit:
+  audit:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+      issues: write
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-      - name: Run Audit-Check
-        uses: rustsec/audit-check@v1.3.2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/audit@v1
+        name: Audit Rust Dependencies

@@ -1,72 +1,97 @@
-# syntax=docker/dockerfile:1.4
-
-# Stage 1: Build the project
-FROM --platform=$BUILDPLATFORM rust:latest as builder
-
-ARG TARGETPLATFORM
-ENV RUST_MUSL_CROSS_TARGET=$TARGETPLATFORM
-ARG target
-ARG binary
-ARG user
-
-RUN echo "I am running on $BUILDPLATFORM, building for $TARGETPLATFORM" > /log
-
-# Determine the cross target based on the architecture
-COPY ./platform.sh /platform.sh
-RUN /platform.sh && \
-    echo $TARGETPLATFORM && \
-    cat /.target
-
-RUN rustup target add "$(cat /.target)" && \
-    apt-get update && \
-    apt-get install -y \
-        pkg-config \
-        librust-alsa-sys-dev \
-        musl-tools \
-        build-essential \
-        cmake \
-        musl-dev \
-        musl-tools \
-        libssl-dev \
-        && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-RUN update-ca-certificates
-
-ENV USER=$user
-ENV UID=10001
-ENV TARGET=$target
-ENV BINARY=$binary
-
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/nonexistent" \
-    --shell "/sbin/nologin" \
-    --no-create-home \
-    --uid "${UID}" \
-    "${USER}"
-
+FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
 WORKDIR /app
+RUN apt-get update && apt-get upgrade -y
+RUN rustup component add clippy
+RUN rustup component add rustfmt
+#todo: create fmt/clippy/test stages
+ARG TARGETPLATFORM
+RUN \
+if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
+    echo 'TODO: need to complete and test building x86_64 FROM an arm platform??... ' ; \
+    apt-get install -y g++-x86-64-linux-gnu libc6-dev-amd64-cross ; \
+    rustup target add x86_64-unknown-linux-gnu ; \
+    rustup toolchain install stable-x86_64-unknown-linux-gnu ; \
+elif [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+    apt-get install -y g++-aarch64-linux-gnu libc6-dev-arm64-cross ; \
+    rustup target add aarch64-unknown-linux-gnu ; \
+    rustup toolchain install stable-aarch64-unknown-linux-gnu ; \
+elif [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then \
+    apt-get install -y g++-arm-linux-gnueabihf libc6-dev-armhf-cross ; \
+    rustup target add armv7-unknown-linux-gnueabihf ; \
+    rustup toolchain install stable-armv7-unknown-linux-gnueabihf ; \
+fi
 
-COPY ./ .
-RUN rustup target list
-RUN cargo build --bin $BINARY \
-    --target $(cat /.target) \
-    --release
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
 
-RUN tree /
+FROM planner AS dependencies
+WORKDIR /app
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+ARG TARGETPLATFORM
+RUN \
+if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
+    TARGET=x86_64-unknown-linux-gnu ; \
+    echo 'TODO: need to complete and test building x86_64 FROM an arm platform??... ' ; \
+elif [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+    TARGET=aarch64-unknown-linux-gnu ; \
+    export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc ; \
+    export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc ; \
+    export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++ ; \
+elif [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then \
+    TARGET=armv7-unknown-linux-gnueabihf ; \
+    export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc ; \
+    export CC_armv7_unknown_Linux_gnueabihf=arm-linux-gnueabihf-gcc ; \
+    export CXX_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++ ; \
+fi \
+&& cargo fetch --target $TARGET
+#&& cargo build --release --target $TARGET
+#https://github.com/f2calv/multi-arch-container-rust/issues/15
 
-# Stage 2: Create the final image
-FROM scratch as release
 
-# Copy the built binary from the builder stage
-ARG target
-ARG binary
-ARG user
-COPY --from=builder /.target /
-RUN export target=$(cat /.target)
-COPY --from=builder "/app/target/$target/release/$binary" /app
+FROM dependencies AS source
+COPY . .
 
-USER $USER:$USER
-ENTRYPOINT ["/app/$binary"]
+
+FROM source AS build
+ARG TARGETPLATFORM
+RUN \
+if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
+    TARGET=x86_64-unknown-linux-gnu ; \
+    echo 'TODO: need to complete and test building x86_64 FROM an arm platform??... ' ; \
+elif [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+    TARGET=aarch64-unknown-linux-gnu ; \
+    export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc ; \
+    export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc ; \
+    export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++ ; \
+elif [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then \
+    TARGET=armv7-unknown-linux-gnueabihf ; \
+    export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc ; \
+    export CC_armv7_unknown_Linux_gnueabihf=arm-linux-gnueabihf-gcc ; \
+    export CXX_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++ ; \
+fi \
+&& cargo build --bin rvault --release --target $TARGET && mv /app/target/$TARGET /app/target/final
+#Note: rename the target folder to 'final' so we don't need to use the TARGET arg in the final stage
+
+
+FROM gcr.io/distroless/cc AS final
+COPY --from=build /app/target/final/release/rvault .
+
+ARG GIT_REPOSITORY
+ENV APP_GIT_REPOSITORY=$GIT_REPOSITORY
+ARG GIT_BRANCH
+ENV APP_GIT_BRANCH=$GIT_BRANCH
+ARG GIT_COMMIT
+ENV APP_GIT_COMMIT=$GIT_COMMIT
+ARG GIT_TAG
+ENV APP_GIT_TAG=$GIT_TAG
+
+ARG GITHUB_WORKFLOW
+ENV APP_GITHUB_WORKFLOW=$GITHUB_WORKFLOW
+ARG GITHUB_RUN_ID
+ENV APP_GITHUB_RUN_ID=$GITHUB_RUN_ID
+ARG GITHUB_RUN_NUMBER
+ENV APP_GITHUB_RUN_NUMBER=$GITHUB_RUN_NUMBER
+
+ENTRYPOINT ["./rvault"]
